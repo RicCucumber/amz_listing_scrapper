@@ -2,6 +2,7 @@ from collections import namedtuple
 import lxml.html
 import time
 from datetime import datetime
+import configparser
 
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -10,8 +11,10 @@ from selenium.webdriver.support.ui import Select
 import urllib.parse
 
 from scraper.scraper import SeleniumScraper
+from slack.slack import Slack
 
-class AmazonBotListing(SeleniumScraper):
+
+class AmazonBotListing(SeleniumScraper, Slack):
 
     fields = [
         'asin',
@@ -35,8 +38,15 @@ class AmazonBotListing(SeleniumScraper):
 
     parse_result = namedtuple('parse_result', field_names=fields, defaults=['']*len(fields))
 
-    def __init__(self, headless=False):
+
+    def __init__(self, headless=False, slack_user=''):
         SeleniumScraper.__init__(self, headless)
+        Slack.__init__(self, slack_user)
+
+        self.config = configparser.ConfigParser()
+        self.config.read(r'D:\github\amz_listing_scrapper_test\main.ini')
+        self.slack_channel = self.config['slack']['channel']
+
         self.main_url = 'https://www.amazon.com'
         self.report_date = datetime.now()
         self.exception_bullets_list = []
@@ -208,8 +218,37 @@ class AmazonBotListing(SeleniumScraper):
                 category, buybox, review_quantity, rating, price, stars_string, str(self.report_date))
 
 
-a = AmazonBotListing(headless=False)
-with a as bot:
-    asin = 'B07MSLMX1J'
-    data = bot.scrape_listing(asin=asin)
-print(data)
+    def slack_message_history(self):
+        slack_query = 'conversations.history'
+        params = {
+            'channel': self.slack_channel,
+        }
+
+        response = self.slack_api_call(api_call=slack_query, _type='get', params=params)
+
+        if response.status_code != 200:
+            print('Issue with Slack')
+            return {'messages': []}
+
+        return response
+
+    def slack_send_message(self, message_text):
+        query = 'chat.postMessage'
+        params = {
+            channel': self.slack_channel,
+            'text': message_text,
+            'as_user': False,
+            'username': 'Listing_checker',
+            'icon_url': 'https://www.freeiconspng.com/uploads/amazon-icon-2.png'
+        }
+
+        return self.slack_api_call(api_call=query, _type='post', params=params)
+
+
+
+a = AmazonBotListing(headless=False, slack_user='main')
+# with a as bot:
+#     asin = 'B07MSLMX1J'
+#     data = bot.scrape_listing(asin=asin)
+# print(data)
+print(a.slack_message_history())
