@@ -85,13 +85,6 @@ class AmazonBotListing(SeleniumScraper):
         search_list = page_to_parse.xpath('//div[@class="s-result-list s-search-results sg-row"]/div[contains(@class, "s-result-item")]')
         asin_list = [each.get('data-asin') for each in search_list if not sponsored(each)]
 
-        #REFACTORING
-        # result_list = []
-        # for each in search_list:
-        #     check_sponsored = each.xpath('.//span[@class="a-size-base a-color-secondary" and contains(text(), "Sponsored")]')
-        #     if len(check_sponsored) == 0:
-        #         result_list.append(each.get('data-asin'))
-
         if not asin in asin_list or asin_list.index(asin) > 11:
             return 'problem'
 
@@ -107,11 +100,6 @@ class AmazonBotListing(SeleniumScraper):
         #bullets
         bullets_tag = page_to_parse.xpath('//div[@id="feature-bullets"]//ul/li/span')
         bullets_list = [each.text.strip() for each in bullets_tag if each.text.strip()]
-        #REFCATORING
-        # for each in tag_bullets:
-        #     bullet_text = each.text.strip()
-        #     if bullet_text != '':
-        #         bullets_list.append(bullet_text)
         bullets_string = '\n'.join(bullets_list)
 
         #EBC and Description
@@ -119,12 +107,6 @@ class AmazonBotListing(SeleniumScraper):
         try:
             ebc_content = page_to_parse.xpath('//div[@class="aplus-v2 desktop celwidget"]//div//text()')
             ebc_list = [each.strip() for each in ebc_content if each and each.strip() != 'Read more']
-            #REFACTORING
-            # for each in ebc_content:
-            #     ebc_text = each.strip()
-            #     if ebc_text and ebc_text != 'Read more':
-            #         ebc_list.append(ebc_text)
-
             ebc_string = ' '.join(ebc_list)
 
         except NoSuchElementException:
@@ -134,10 +116,6 @@ class AmazonBotListing(SeleniumScraper):
             description_tag = page_to_parse.xpath('//div[@id="productDescription"]/*[not(self::div)]//text()')
             description_list = [each.strip() for each in description_tag]
             description_text = ' '.join(description_list)
-            #Part of the description's text for indexing
-            #Disabled. TODO - realized another logic to check description's indexing
-            # description_p_text_list = page_to_parse.xpath('//div[@id="productDescription"]//p/text()')
-            # description_index_list = [each.strip() for each in description_p_text_list]
 
         #category
         breadcrumb = page_to_parse.xpath('//div[@id="wayfinding-breadcrumbs_container"]//li//text()')
@@ -172,17 +150,6 @@ class AmazonBotListing(SeleniumScraper):
                 price = page_to_parse.xpath(x_path)[0]
                 break
 
-        #REFACTORING
-        # price = page_to_parse.xpath('//span[@id="priceblock_ourprice"]/text()')
-        # if len(price) == 0:
-        #     price = page_to_parse.xpath('//span[@id="priceblock_saleprice"]/text()')
-        #     if len(price) == 0:
-        #         price = 'Currently unavailable'
-        #     else:
-        #         price = price[0]
-        # else:
-        #     price = price[0]
-
         #top reviews
         top_reviews_stars = ''
         top_reviews = page_to_parse.xpath('//div[@data-hook="top-customer-reviews-widget"]/div[@data-hook="review"]')
@@ -190,30 +157,11 @@ class AmazonBotListing(SeleniumScraper):
         stars_list = [review.xpath(star_xpath)[0].split(' ')[0] for review in top_reviews]
         stars_string = '/'.join(stars_list)
 
-        # REFACTORING
-        # if len(top_reviews) > 0:
-        #     star_list = []
-        #     for each in top_reviews:
-        #         star_list.append(each.xpath('.//i[@data-hook="review-star-rating"]/span/text()')[0].split(' ')[0])
-        #     stars_string = '/'.join(star_list)
-        # else:
-        #     stars_string = ''
-
         #images
         image_tag = page_to_parse.xpath('//div[@id="main-image-container"]/ul/li[contains(@class, "itemNo")]')
         image_xpath = './/img/@src'
         image_list = [each.xpath(image_xpath)[0] for each in image_tag]
         images_string = '\n'.join(image_list)
-
-        #REFACTORING
-        # if len(image_container) > 0:
-        #     for each in image_container:
-        #         #link = each.xpath('.//img/@src')[0]
-        #         #image_list.append(link.split('_')[0] + link.split('.')[-1:][0])
-        #         image_list.append(each.xpath('.//img/@src')[0])
-        #     images_string = '\n'.join(image_list)
-        # else:
-        #     images_string = ''
 
         #Check indexing for product title
         product_title_indexing = self.__lxml_check_indexing(product_title)
@@ -227,15 +175,6 @@ class AmazonBotListing(SeleniumScraper):
         ]
 
         bullets_index_string = '\n'.join(bullets_index_list)
-
-        #REFACTORING
-        # bullet_index_list = []
-        # for each in bullets_list:
-        #     if each and not each in self.exception_bullets_list:
-        #         bullet_index_list.append(self.__lxml_check_indexing(each))
-        #     else:
-        #         bullet_index_list.append('')
-
 
         #Check indexing for product description
         if description_text:
