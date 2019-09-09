@@ -1,3 +1,7 @@
+import sys
+import logging
+logging.basicConfig(filename='app.log')
+
 from collections import namedtuple
 import lxml.html
 import time
@@ -52,7 +56,7 @@ class AmazonBotListing(SeleniumScraper, Slack, GoogleSheet):
         GoogleSheet.__init__(self, gs_token_path)
 
         self.config = configparser.ConfigParser()
-        self.config.read(r'D:\github\amz_listing_scrapper_test\main.ini')
+        self.config.read(r'C:\python_scripts\listing\main.ini')
 
         #Slack info
         self.slack_channel = self.config['slack']['channel']
@@ -124,6 +128,7 @@ class AmazonBotListing(SeleniumScraper, Slack, GoogleSheet):
         As a result, the source is passed to the method parse_page() and finally return result of the parsing (nametuple object)
         """
         self.asin = asin
+        print(asin)
         self.browser.get(f'{self.main_url}/dp/{self.asin}')
 
         #Check wrong page
@@ -441,6 +446,7 @@ class AmazonBotListing(SeleniumScraper, Slack, GoogleSheet):
         def slack_message_enough_time(message_timestamp, period):
             """
             function to check if enough time has passed since the last message
+                - period - value in minutes
             """
             message_timedelta = datetime.now() - datetime.fromtimestamp(float(message_timestamp))
 
@@ -512,6 +518,13 @@ class AmazonBotListing(SeleniumScraper, Slack, GoogleSheet):
                 if message_must_be_sent(text_to_check=text, period=period, slack_old_messages=slack_old_messages):
                     self.messages_to_send.append(each)
 
+            #IF there are now issues - send "good message" every "period"
+            if not self.messages_to_send:
+                good_message = 'So far so good :smiley:'
+
+                if message_must_be_sent(text_to_check=good_message, period=180, slack_old_messages=slack_old_messages):
+                    self.messages_to_send.append(good_message)
+
         return True
 
 
@@ -534,11 +547,16 @@ class AmazonBotListing(SeleniumScraper, Slack, GoogleSheet):
                                     RANGE_NAME=f'{range_to_paste}!R{self.main_sheet_last_row+2}', values = timestamp_to_upload) #add timestamp
 
 
+try:
+    with AmazonBotListing(headless=False, slack_user='main') as bot:
+        for asin in bot.asin_brand_dict:
+            bot.scrape_listing(asin=asin)
 
-with AmazonBotListing(headless=False, slack_user='main') as bot:
-    for asin in bot.asin_brand_dict:
-        bot.scrape_listing(asin=asin)
+        bot.slack_message_prepare()
+        bot.update_main_data()
 
-    bot.slack_message_prepare()
-    bot.update_main_data()
-    bot.slack_send_message(message_text='\n'.join(bot.messages_to_send))
+        if bot.messages_to_send:
+            bot.slack_send_message(message_text='\n'.join(bot.messages_to_send))
+
+except Exception as e:
+    logging.exception(str(e))
